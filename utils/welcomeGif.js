@@ -11,13 +11,13 @@ function easeInOutQuad(x) {
 export const generateWelcomeGif = async (username, avatarUrl) => {
     const width = 680;
     const height = 240;
-    const frames = 120; // Extended to 120 frames (approx 5 seconds) to make the rotation last longer
-    const fps = 25;
+    const frames = 80; // Optimized to 80 frames (approx 4 seconds at 20fps) for faster encoding and smaller size
+    const fps = 20;
 
     const encoder = new GIFEncoder(width, height, 'neuquant', true);
     encoder.start();
     encoder.setRepeat(0);   
-    encoder.setQuality(15); // Quality 15 to ensure fast encoding even with 120 frames
+    encoder.setQuality(15); // Good balance of speed and size
 
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
@@ -29,53 +29,175 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
         } catch(e) { console.error('Failed to load avatar', e); }
     }
 
-    const particles = Array.from({ length: 20 }).map(() => ({
+    // Initialize Space Background Elements
+    // Twinkling stars
+    const stars = Array.from({ length: 40 }).map(() => ({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: Math.random() * 2 + 1,
-        speedX: (Math.random() - 0.5) * 1.5,
-        speedY: (Math.random() - 0.5) * 1.5,
+        size: Math.random() * 1.5 + 0.5,
+        twinkleSpeed: 0.1 + Math.random() * 0.15,
+        phase: Math.random() * Math.PI * 2,
+        driftSpeed: -(Math.random() * 0.2 + 0.1) // very slow drift left
     }));
 
+    // Spiral Galaxy centered on the right side behind text
+    const galaxyCenterX = 520;
+    const galaxyCenterY = 120;
+    const galaxyRadius = 100;
+    const galaxyArms = 3;
+    const galaxyParticles = Array.from({ length: 130 }).map(() => {
+        const arm = Math.floor(Math.random() * galaxyArms);
+        const distanceProgress = Math.pow(Math.random(), 1.5); // cluster close to the center
+        return {
+            arm,
+            distanceProgress,
+            angleOffset: (Math.random() - 0.5) * 0.35,
+            size: Math.random() * 1.2 + 0.4,
+            brightness: 0.5 + Math.random() * 0.5,
+            hue: 275 + Math.random() * 20 // between 275 (purple) and 295 (pink-purple)
+        };
+    });
+
+    // Space Planets
+    const planet1 = {
+        baseX: 85,
+        baseY: 45,
+        radius: 12,
+        driftX: 0.12,
+        driftY: 0.04
+    };
+    const planet2 = {
+        baseX: 610,
+        baseY: 195,
+        radius: 6,
+        driftX: -0.08,
+        driftY: -0.04
+    };
+
     for (let i = 0; i < frames; i++) {
-        // Continuous animation without a long pause at the end
         encoder.setDelay(1000 / fps);
 
-        ctx.fillStyle = '#0a0d16'; 
+        // 1. Deep Space background (Dark space violet)
+        ctx.fillStyle = '#05030c'; 
         ctx.fillRect(0, 0, width, height);
 
-        // Tech grid
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+        const pulse = Math.sin((i / frames) * Math.PI) * 0.5 + 0.5;
+
+        // 2. Cosmic Nebulae (Purple/Pink Glows)
+        ctx.save();
+        // Nebula 1 (near galaxy)
+        const grad1 = ctx.createRadialGradient(galaxyCenterX, galaxyCenterY, 10, galaxyCenterX, galaxyCenterY, 220);
+        grad1.addColorStop(0, `rgba(168, 85, 247, ${0.12 + pulse * 0.04})`); // bright violet
+        grad1.addColorStop(1, 'rgba(5, 3, 12, 0)');
+        ctx.fillStyle = grad1;
+        ctx.fillRect(0, 0, width, height);
+
+        // Nebula 2 (near planet 1/bottom left)
+        const grad2 = ctx.createRadialGradient(150, 150, 10, 150, 150, 200);
+        grad2.addColorStop(0, `rgba(217, 70, 239, ${0.08 + pulse * 0.03})`); // pink-purple
+        grad2.addColorStop(1, 'rgba(5, 3, 12, 0)');
+        ctx.fillStyle = grad2;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+
+        // 3. Tech grid with subtle purple tint
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.02)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         for (let x = 0; x < width; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
         for (let y = 0; y < height; y += 40) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
         ctx.stroke();
 
-        const pulse = Math.sin((i / frames) * Math.PI) * 0.5 + 0.5;
-        
-        ctx.save();
-        const grad1 = ctx.createRadialGradient(150, 120, 10, 150, 120, 300);
-        grad1.addColorStop(0, `rgba(168, 85, 247, ${0.1 + pulse * 0.05})`);
-        grad1.addColorStop(1, 'rgba(10, 13, 22, 0)');
-        ctx.fillStyle = grad1;
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-
-        ctx.fillStyle = `rgba(192, 132, 252, ${0.3 + pulse * 0.2})`;
-        particles.forEach(p => {
-            p.x += p.speedX; p.y += p.speedY;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        // 4. Draw Twinkling Stars
+        stars.forEach(star => {
+            star.x += star.driftSpeed;
+            if (star.x < 0) star.x = width; // wrap
+            const opacity = (Math.sin(i * star.twinkleSpeed + star.phase) * 0.4 + 0.6) * 0.7;
+            ctx.fillStyle = `rgba(232, 121, 249, ${opacity})`; // Pinkish-purple star glow
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
         });
 
-        // Animations Progress
-        const panelProgress = easeOutExpo(Math.max(0, Math.min(i / 25, 1)));
-        const avatarProgress = easeOutExpo(Math.max(0, Math.min((i - 15) / 20, 1)));
-        const textProgress = easeOutExpo(Math.max(0, Math.min((i - 25) / 25, 1)));
-        const shProgress = easeInOutQuad(Math.max(0, Math.min((i - 30) / 25, 1)));
+        // 5. Draw Spiral Galaxy
+        const currentRotation = i * 0.012; // slow drift
+        ctx.save();
+        // Galaxy core glow
+        const coreGlow = ctx.createRadialGradient(galaxyCenterX, galaxyCenterY, 2, galaxyCenterX, galaxyCenterY, 25);
+        coreGlow.addColorStop(0, 'rgba(255, 255, 255, 0.75)');
+        coreGlow.addColorStop(0.2, 'rgba(217, 70, 239, 0.45)');
+        coreGlow.addColorStop(1, 'rgba(168, 85, 247, 0)');
+        ctx.fillStyle = coreGlow;
+        ctx.beginPath();
+        ctx.arc(galaxyCenterX, galaxyCenterY, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
 
-        // 1. Draw Glass Panel
-        // Start from center width=0 to full width
+        // Galaxy arms stars
+        galaxyParticles.forEach(gp => {
+            const theta = gp.distanceProgress * Math.PI * 2.5; 
+            const angle = theta + (gp.arm * 2 * Math.PI / galaxyArms) + currentRotation + gp.angleOffset;
+            const r = gp.distanceProgress * galaxyRadius;
+            const px = galaxyCenterX + r * Math.cos(angle);
+            const py = galaxyCenterY + r * Math.sin(angle);
+
+            const opacity = gp.brightness * (1 - gp.distanceProgress * 0.65) * 0.5;
+            ctx.fillStyle = `hsla(${gp.hue}, 100%, 75%, ${opacity})`;
+            ctx.beginPath();
+            ctx.arc(px, py, gp.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // 6. Draw Planets
+        // Planet 1 (Gas giant with ring)
+        ctx.save();
+        const p1x = planet1.baseX + planet1.driftX * i;
+        const p1y = planet1.baseY + planet1.driftY * i;
+        
+        // Ring behind
+        ctx.strokeStyle = 'rgba(217, 70, 239, 0.25)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(p1x, p1y, planet1.radius * 1.8, planet1.radius * 0.35, -Math.PI / 6, Math.PI, 0);
+        ctx.stroke();
+
+        // Planet body
+        const gradP1 = ctx.createRadialGradient(p1x - 3, p1y - 3, 2, p1x, p1y, planet1.radius);
+        gradP1.addColorStop(0, 'hsl(295, 100%, 78%)'); // light pinkish-purple
+        gradP1.addColorStop(1, 'hsl(275, 100%, 38%)'); // vibrant deep purple
+        ctx.fillStyle = gradP1;
+        ctx.beginPath();
+        ctx.arc(p1x, p1y, planet1.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ring front
+        ctx.strokeStyle = 'rgba(217, 70, 239, 0.45)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(p1x, p1y, planet1.radius * 1.8, planet1.radius * 0.35, -Math.PI / 6, 0, Math.PI);
+        ctx.stroke();
+        ctx.restore();
+
+        // Planet 2 (Small ice world)
+        ctx.save();
+        const p2x = planet2.baseX + planet2.driftX * i;
+        const p2y = planet2.baseY + planet2.driftY * i;
+        const gradP2 = ctx.createRadialGradient(p2x - 1, p2y - 1, 1, p2x, p2y, planet2.radius);
+        gradP2.addColorStop(0, 'hsl(255, 100%, 82%)'); // light blue-violet
+        gradP2.addColorStop(1, 'hsl(285, 100%, 50%)'); // light purple
+        ctx.fillStyle = gradP2;
+        ctx.beginPath();
+        ctx.arc(p2x, p2y, planet2.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Animations Progress (scaled for 80 frames)
+        const panelProgress = easeOutExpo(Math.max(0, Math.min(i / 20, 1)));
+        const avatarProgress = easeOutExpo(Math.max(0, Math.min((i - 12) / 18, 1)));
+        const textProgress = easeOutExpo(Math.max(0, Math.min((i - 20) / 20, 1)));
+        const shProgress = easeInOutQuad(Math.max(0, Math.min((i - 24) / 20, 1)));
+
+        // 7. Glass Panel
         const fullPanelW = width - 40;
         const panelH = height - 40;
         const panelW = fullPanelW * panelProgress;
@@ -84,11 +206,10 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
 
         if (panelProgress > 0) {
             ctx.save();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)'; // subtle white
-            ctx.strokeStyle = `rgba(168, 85, 247, ${0.1 + panelProgress * 0.2})`;
-            ctx.lineWidth = 1;
+            ctx.fillStyle = 'rgba(10, 8, 20, 0.38)'; // Glassmorphism translucent dark purple-black
+            ctx.strokeStyle = `rgba(217, 70, 239, ${0.12 + panelProgress * 0.25})`; // Light pinkish-purple border
+            ctx.lineWidth = 1.5;
             
-            // Draw round rect manually
             const r = 15;
             ctx.beginPath();
             ctx.moveTo(panelX + r, panelY);
@@ -106,9 +227,9 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
             ctx.restore();
         }
 
-        // 2. Avatar with dashed rotating border
+        // 8. Avatar with dashed rotating border
         const avatarSize = 130;
-        const avatarX = (width - fullPanelW) / 2 + 30; // Use static left pos so it doesn't move while panel expands
+        const avatarX = (width - fullPanelW) / 2 + 30;
         const avatarY = (height - avatarSize) / 2;
 
         if (avatarProgress > 0) {
@@ -120,14 +241,14 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
             ctx.beginPath();
             ctx.arc(0, 0, (avatarSize / 2) + 12, 0, Math.PI * 2);
             ctx.setLineDash([15, 10]); 
-            ctx.strokeStyle = `rgba(192, 132, 252, ${avatarProgress})`;
+            ctx.strokeStyle = `rgba(217, 70, 239, ${avatarProgress})`; // Light pink-purple
             ctx.lineWidth = 3;
             ctx.stroke();
             
             ctx.beginPath();
             ctx.arc(0, 0, (avatarSize / 2) + 5, 0, Math.PI * 2);
             ctx.setLineDash([]);
-            ctx.strokeStyle = `rgba(139, 92, 246, ${avatarProgress * 0.5})`;
+            ctx.strokeStyle = `rgba(168, 85, 247, ${avatarProgress * 0.5})`; // deeper purple
             ctx.lineWidth = 1;
             ctx.stroke();
             ctx.restore();
@@ -147,37 +268,40 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
             ctx.restore();
         }
 
-        // 3. Text and Gradient Line
+        // 9. Text and Underline
         if (textProgress > 0) {
             const textX = avatarX + avatarSize + 30;
             ctx.textAlign = 'left';
             
-            ctx.fillStyle = `rgba(180, 190, 210, ${textProgress})`;
-            ctx.font = 'bold 16px "Segoe UI", Arial';
+            // Subtitle text (Pinkish-purple)
+            ctx.fillStyle = `rgba(217, 70, 239, ${textProgress})`;
+            ctx.font = '16px "Outfit", "Segoe UI", sans-serif';
             ctx.fillText('Welcome to the Galaxy Server Community!', textX, avatarY + 40);
 
+            // Username text
             ctx.fillStyle = `rgba(255, 255, 255, ${textProgress})`;
-            ctx.font = 'bold 42px "Segoe UI", Arial';
+            ctx.font = 'bold 42px "Outfit", "Segoe UI", sans-serif';
             let displayUser = username.length > 15 ? username.slice(0, 15) + '...' : username;
             ctx.fillText(displayUser, textX, avatarY + 85);
 
+            // Underline
             ctx.save();
             const lineWidth = 300 * textProgress;
             const lineY = avatarY + 105;
             const lineGrad = ctx.createLinearGradient(textX, lineY, textX + lineWidth, lineY);
-            lineGrad.addColorStop(0, `rgba(168, 85, 247, ${textProgress})`);
+            lineGrad.addColorStop(0, `rgba(217, 70, 239, ${textProgress})`);
             lineGrad.addColorStop(1, 'rgba(168, 85, 247, 0)'); 
             ctx.fillStyle = lineGrad;
             ctx.fillRect(textX, lineY, lineWidth, 3);
             ctx.restore();
         }
 
-        // 4. G&S Logo at bottom right
+        // 10. G&S Logo at bottom right
         if (shProgress > 0) {
             const logoY = (height + panelH) / 2 - 30;
             const targetCenterX = (width + fullPanelW) / 2 - 50;
             
-            ctx.font = 'italic bold 24px "Segoe UI", Arial';
+            ctx.font = 'italic bold 24px "Outfit", "Segoe UI", sans-serif';
             
             const gStartX = targetCenterX - 60;
             const gEndX = targetCenterX - 15;
@@ -187,7 +311,7 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
             const sEndX = targetCenterX + 12;
             const sCurrentX = sStartX + (sEndX - sStartX) * shProgress;
 
-            ctx.fillStyle = `rgba(192, 132, 252, ${shProgress})`;
+            ctx.fillStyle = `rgba(217, 70, 239, ${shProgress})`;
             ctx.textAlign = 'center';
             ctx.fillText('&', targetCenterX, logoY);
 
@@ -201,7 +325,7 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
             ctx.save();
             ctx.beginPath();
             ctx.arc(targetCenterX, logoY - 8, 30, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(168, 85, 247, ${shProgress * 0.4})`;
+            ctx.strokeStyle = `rgba(217, 70, 239, ${shProgress * 0.4})`;
             ctx.lineWidth = 1;
             ctx.stroke();
             ctx.restore();
@@ -209,7 +333,8 @@ export const generateWelcomeGif = async (username, avatarUrl) => {
 
         encoder.addFrame(ctx);
 
-        if (i % 10 === 0) {
+        // Yield execution to event loop
+        if (i % 15 === 0) {
             await new Promise(resolve => setTimeout(resolve, 0));
         }
     }

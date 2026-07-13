@@ -2,14 +2,21 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import 'dotenv/config';
 import config from './config/config.js';
 import guildMemberAdd from './events/guildMemberAdd.js';
+import { ensureFonts } from './utils/fontLoader.js';
 
 console.log('🚀 Initializing Galaxy Welcome Bot...');
+
+// Pre-load fonts asynchronously
+ensureFonts().catch(err => console.error('Failed to pre-load fonts:', err));
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers
-    ]
+    ],
+    rest: {
+        timeout: 60000
+    }
 });
 
 // Register guildMemberAdd Event
