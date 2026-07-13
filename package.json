@@ -1,0 +1,25 @@
+{
+  "name": "galaxy-welcome-bot",
+  "version": "1.0.0",
+  "description": "Galaxy Welcome Bot - Standalone High-Performance Welcome Bot",
+  "main": "bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node --watch bot.js"
+  },
+  "keywords": [
+    "discord.js",
+    "welcome",
+    "gif",
+    "galaxy"
+  ],
+  "author": "Galaxy Team",
+  "license": "MIT",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.99",
+    "discord.js": "^14.26.3",
+    "dotenv": "^17.4.2",
+    "gif-encoder-2": "^1.0.5"
+  }
+}
